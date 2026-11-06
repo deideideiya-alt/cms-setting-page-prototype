@@ -29056,11 +29056,23 @@ DPO : dpo@tcl.com`;
         (appVersionField || []).forEach((entry) => (entry.ranges || []).forEach((r) => { if (r && r.val) set.add(String(r.val)); }));
         return [...set].sort((a, b) => parseFloat(a) - parseFloat(b));
       }, [JSON.stringify(appVersionField)]);
-      const termOptions = termVals.length ? termVals.map((v) => ({ value: v, label: v })) : [{ value: 'default', label: '全版本（默认）' }];
       const [termVer, setTermVer] = useState(termVals.length ? termVals[0] : 'default');
+      const [termDraft, setTermDraft] = useState(termVer);
       useEffect(() => {
-        if (!termVals.includes(termVer)) setTermVer(termVals.length ? termVals[0] : 'default');
+        const next = termVals.includes(termVer) ? termVer : (termVals.length ? termVals[0] : 'default');
+        if (termVer !== next) setTermVer(next);
+        setTermDraft(next);
       }, [termVals.join('|')]);
+      const commitTerm = () => {
+        const v = (termDraft || '').trim();
+        if (!v) { setTermDraft(termVer); return; }
+        if (!termVals.includes(v)) {
+          message.error('输入的终端版本号不存在');
+          setTermDraft(termVer);
+          return;
+        }
+        if (v !== termVer) setTermVer(v);
+      };
       const [pageOpen, setPageOpen] = useState(false);
       const [editingPage, setEditingPage] = useState(null);
       const [copyOpen, setCopyOpen] = useState(false);
@@ -29421,15 +29433,17 @@ DPO : dpo@tcl.com`;
                         <div className="editor-meta">
                           <span>设置页面 <b style={{ color: 'rgba(0,0,0,.85)' }}>{selected.name}</b></span>
                           <span className="bar-label">终端版本</span>
-                          <Select
-                            value={termVer}
+                          <Input
+                            value={termDraft}
                             style={{ width: 160 }}
-                            options={termOptions}
-                            onChange={setTermVer}
+                            placeholder={termVals.length ? '输入终端版本号' : '未配置 app version'}
                             disabled={!termVals.length}
+                            onChange={(e) => setTermDraft(e.target.value)}
+                            onPressEnter={commitTerm}
+                            onBlur={commitTerm}
                           />
                           <span className="bar-hint">
-                            {termVals.length ? '按 app version 分版本管理文案' : '未配置 app version，默认全版本生效'}
+                            {termVals.length ? '输入终端版本号查看对应文案，无效版本会提示' : '未配置 app version，默认全版本生效'}
                           </span>
                           <Tooltip title={termVals.length >= 2 ? '' : '至少需要配置两个 app version 才能对比'}>
                             <span>
