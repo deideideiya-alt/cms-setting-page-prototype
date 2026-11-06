@@ -29756,6 +29756,20 @@ DPO : dpo@tcl.com`;
         });
       };
 
+      const AV_OP_MAP = { '<': '<', '<=': '≤', '=': '=', '>=': '≥', '>': '>', '!=': '≠' };
+      const formatVersionRanges = (appVersion) => {
+        const list = appVersion || [];
+        if (!list.length) return null;
+        const rows = [];
+        list.forEach((entry, idx) => {
+          const ranges = (entry.ranges || []).filter((r) => r && r.op && r.val);
+          if (!ranges.length) return;
+          const text = ranges.map((r) => `${AV_OP_MAP[r.op] || r.op} ${r.val}`).join(' 且 ');
+          rows.push(`版本区间${idx + 1}: ${text}`);
+        });
+        return rows.length ? rows : null;
+      };
+
       const columns = [
         { title: '序号', width: 80, align: 'center', fixed: 'left', render: (_, __, index) => index + 1 },
         {
@@ -29798,6 +29812,22 @@ DPO : dpo@tcl.com`;
           render: (value) => {
             const text = zoneText(value);
             return <Typography.Text ellipsis={{ tooltip: text }} style={{ maxWidth: 280 }}>{text}</Typography.Text>;
+          },
+        },
+        {
+          title: '版本区间',
+          dataIndex: 'appVersion',
+          width: 220,
+          render: (value) => {
+            const rows = formatVersionRanges(value);
+            if (!rows) {
+              return <Typography.Text type="secondary">【未配置，默认全版本生效】</Typography.Text>;
+            }
+            return (
+              <div style={{ lineHeight: '20px' }}>
+                {rows.map((r, i) => <div key={i}>{r}</div>)}
+              </div>
+            );
           },
         },
         {
