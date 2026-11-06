@@ -74,14 +74,13 @@
     .bar-label { color: rgba(0,0,0,.85); font-weight: 500; white-space: nowrap; }
     .bar-hint { color: rgba(0,0,0,.45); font-size: 12px; }
     .app-version-field { display: flex; flex-direction: column; gap: 12px; }
-    .av-card {
-      border: 1px solid #d9d9d9; border-radius: 6px; padding: 12px 14px;
-      background: #fafafa;
+    .av-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .av-title { width: 76px; flex-shrink: 0; font-weight: 600; color: rgba(0,0,0,.85); }
+    .av-cond {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff;
     }
-    .av-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .av-title { font-weight: 600; color: rgba(0,0,0,.85); }
-    .av-range-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .av-label { width: 64px; flex-shrink: 0; color: rgba(0,0,0,.65); }
+    .av-and { color: rgba(0,0,0,.65); }
     .av-add { padding-left: 0; }
     .av-empty-hint { color: rgba(0,0,0,.45); font-size: 12px; }
     .protocol-body { display: flex; flex: 1; min-height: 460px; }
@@ -28896,7 +28895,7 @@ DPO : dpo@tcl.com`;
         htmlBackground: '#000000',
         versions: ['7.5', '7.6', '7.7'],
         appVersion: [
-          { ranges: [{ op: '<', val: '916' }] },
+          { ranges: [{ op: '<', val: '916' }, { op: '', val: '' }] },
           { ranges: [{ op: '>=', val: '916' }, { op: '<', val: '1000' }] },
         ],
         pages: withVersionTexts(buildGlobalPages(), ['916', '1000']),
@@ -28984,53 +28983,66 @@ DPO : dpo@tcl.com`;
     function AppVersionField({ value, onChange }) {
       const list = value || [];
       const update = (next) => onChange(next);
-      const addVersion = () => update([...list, { ranges: [{ op: '<', val: '' }] }]);
-      const removeVersion = (idx) => update(list.filter((_, i) => i !== idx));
-      const patchVersion = (idx, patch) => update(list.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
-      const addRange = (vIdx) => {
-        const v = list[vIdx];
-        patchVersion(vIdx, { ranges: [...(v.ranges || []), { op: '<', val: '' }] });
-      };
-      const patchRange = (vIdx, rIdx, patch) => {
-        const v = list[vIdx];
-        patchVersion(vIdx, { ranges: v.ranges.map((r, i) => (i === rIdx ? { ...r, ...patch } : r)) });
-      };
-      const removeRange = (vIdx, rIdx) => {
-        const v = list[vIdx];
-        patchVersion(vIdx, { ranges: v.ranges.filter((_, i) => i !== rIdx) });
-      };
+      const addRow = () => update([...list, { ranges: [{ op: '<', val: '' }, { op: '', val: '' }] }]);
+      const removeRow = (idx) => update(list.filter((_, i) => i !== idx));
+      const patchRange = (idx, slot, patch) =>
+        update(list.map((v, i) => {
+          if (i !== idx) return v;
+          const ranges = v.ranges ? v.ranges.slice() : [];
+          while (ranges.length <= slot) ranges.push({ op: '', val: '' });
+          ranges[slot] = { ...ranges[slot], ...patch };
+          return { ...v, ranges };
+        }));
+      const clearGroup2 = (idx) =>
+        update(list.map((v, i) => (i === idx ? { ...v, ranges: [v.ranges[0] || { op: '', val: '' }, { op: '', val: '' }] } : v)));
+
+      const minusBtn = (handler) => (
+        <Button type="text" danger shape="circle" size="small" onClick={handler}>
+          <span style={{ fontSize: 14, lineHeight: 1 }}>−</span>
+        </Button>
+      );
+
       return (
         <div className="app-version-field">
           {list.map((v, vIdx) => (
-            <div className="av-card" key={vIdx}>
-              <div className="av-card-head">
-                <span className="av-title">version{vIdx + 1}</span>
-                <Button type="link" danger size="small" onClick={() => removeVersion(vIdx)}>删除</Button>
+            <div className="av-row" key={vIdx}>
+              <span className="av-title">版本区间{vIdx + 1}</span>
+              <div className="av-cond">
+                <Select
+                  value={v.ranges[0] ? v.ranges[0].op : undefined}
+                  style={{ width: 88 }}
+                  placeholder="操作符"
+                  onChange={(val) => patchRange(vIdx, 0, { op: val })}
+                  options={AV_OP_OPTIONS}
+                />
+                <Input
+                  value={v.ranges[0] ? v.ranges[0].val : ''}
+                  placeholder="版本号"
+                  style={{ width: 160 }}
+                  onChange={(e) => patchRange(vIdx, 0, { val: e.target.value })}
+                />
               </div>
-              {(v.ranges || []).map((r, rIdx) => (
-                <div className="av-range-row" key={rIdx}>
-                  <span className="av-label">版本区间</span>
-                  <Select
-                    value={r.op}
-                    style={{ width: 88 }}
-                    onChange={(val) => patchRange(vIdx, rIdx, { op: val })}
-                    options={AV_OP_OPTIONS}
-                  />
-                  <Input
-                    value={r.val}
-                    placeholder="916"
-                    style={{ width: 160 }}
-                    onChange={(e) => patchRange(vIdx, rIdx, { val: e.target.value })}
-                  />
-                  <Button type="primary" shape="circle" size="small" icon={PlusOutlined ? <PlusOutlined /> : null} onClick={() => addRange(vIdx)} />
-                  {v.ranges.length > 1 && (
-                    <Button type="text" size="small" danger onClick={() => removeRange(vIdx, rIdx)}>移除</Button>
-                  )}
-                </div>
-              ))}
+              {minusBtn(() => removeRow(vIdx))}
+              <span className="av-and">且</span>
+              <div className="av-cond">
+                <Select
+                  value={v.ranges[1] ? v.ranges[1].op : undefined}
+                  style={{ width: 88 }}
+                  placeholder="操作符"
+                  onChange={(val) => patchRange(vIdx, 1, { op: val })}
+                  options={AV_OP_OPTIONS}
+                />
+                <Input
+                  value={v.ranges[1] ? v.ranges[1].val : ''}
+                  placeholder="版本号"
+                  style={{ width: 160 }}
+                  onChange={(e) => patchRange(vIdx, 1, { val: e.target.value })}
+                />
+              </div>
+              {minusBtn(() => clearGroup2(vIdx))}
             </div>
           ))}
-          <Button type="link" icon={PlusOutlined ? <PlusOutlined /> : null} onClick={addVersion} className="av-add">添加version</Button>
+          <Button type="link" icon={PlusOutlined ? <PlusOutlined /> : null} onClick={addRow} className="av-add">添加版本区间</Button>
           {!list.length && <div className="av-empty-hint">【未配置，默认全版本生效】</div>}
         </div>
       );
