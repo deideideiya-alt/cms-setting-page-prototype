@@ -145,6 +145,8 @@
     .cmp-body { max-height: 420px; overflow: auto; padding: 12px 0; font-size: 13px; line-height: 1.8; }
     .cmp-line { padding: 0 12px; white-space: pre-wrap; }
     .cmp-line.mark { background: #fff7e6; }
+    .cmp-para { padding: 6px 12px; white-space: pre-wrap; border-bottom: 1px dashed #f0f0f0; }
+    .cmp-para.mark { background: #fff7e6; border-left: 3px solid #fa8c16; }
     .preview-body {
       background: #000; color: #fff; min-height: 320px; padding: 16px;
       white-space: pre-wrap; line-height: 1.8; font-size: 13px;
@@ -28819,7 +28821,21 @@ DPO : dpo@tcl.com`;
         privacyUrl: '',
         ...rest,
         texts,
+        versionTexts: partial.versionTexts || { default: texts },
       };
+    }
+
+    const tagPara = (txt, ver) => `${txt || ''}\n\n[App ${ver} 专属条款] 本版本适用额外的合规声明与数据保留策略。`;
+    function withVersionTexts(pages, vals) {
+      return pages.map((p) => {
+        const vts = { default: p.texts };
+        (vals || []).forEach((v) => {
+          const t = {};
+          Object.keys(p.texts).forEach((k) => { t[k] = p.texts[k] ? tagPara(p.texts[k], v) : p.texts[k]; });
+          vts[v] = t;
+        });
+        return { ...p, versionTexts: vts };
+      });
     }
 
     function buildGlobalPages() {
@@ -28879,7 +28895,11 @@ DPO : dpo@tcl.com`;
         defaultLanguage: 'en',
         htmlBackground: '#000000',
         versions: ['7.5', '7.6', '7.7'],
-        pages: buildGlobalPages(),
+        appVersion: [
+          { ranges: [{ op: '<', val: '916' }] },
+          { ranges: [{ op: '>=', val: '916' }, { op: '<', val: '1000' }] },
+        ],
+        pages: withVersionTexts(buildGlobalPages(), ['916', '1000']),
       },
       simpleRecord({ priority: 4, policyName: '东南亚五国_隐私协议', zones: ['vn', 'th', 'ph'], status: 1 }),
       simpleRecord({ priority: 2, policyName: 'TC美国-巴西', zones: ['us', 'br'], status: 1 }),
@@ -28923,7 +28943,7 @@ DPO : dpo@tcl.com`;
         zones: [...(record.zones || [])],
         supportedLanguages: [...(record.supportedLanguages || ['en'])],
         versions: [...record.versions],
-        pages: record.pages.map((item) => ({ ...item, texts: { ...item.texts } })),
+        pages: record.pages.map((item) => ({ ...item, texts: { ...item.texts }, versionTexts: { ...(item.versionTexts || { default: item.texts }) } })),
       };
     }
 
@@ -28934,15 +28954,18 @@ DPO : dpo@tcl.com`;
 
     function HighlightText({ text, other }) {
       const source = text || '';
-      const otherLines = new Set((other || '').split('\n'));
+      const otherText = other || '';
       if (!source.trim()) {
-        return <div className="cmp-body"><div className="cmp-line">（这一版还没有该语言的正文）</div></div>;
+        return <div className="cmp-body"><div className="cmp-para">（这一版还没有该语言的正文）</div></div>;
       }
+      const splitParas = (txt) => txt.split(/\n{2,}|\n/).map((p) => p.trim()).filter((p) => p.length);
+      const paras = splitParas(source);
+      const otherParas = new Set(splitParas(otherText));
       return (
         <div className="cmp-body">
-          {source.split('\n').map((line, index) => (
-            <div key={index} className={line && !otherLines.has(line) ? 'cmp-line mark' : 'cmp-line'}>
-              {line || ' '}
+          {paras.map((para, index) => (
+            <div key={index} className={!otherParas.has(para) ? 'cmp-para mark' : 'cmp-para'}>
+              {para}
             </div>
           ))}
         </div>
@@ -29018,7 +29041,7 @@ DPO : dpo@tcl.com`;
       const [pageForm] = Form.useForm();
       const [copyForm] = Form.useForm();
       const [typeForm] = Form.useForm();
-      const [pages, setPages] = useState(() => record.pages.map((item) => ({ ...item, texts: { ...item.texts } })));
+      const [pages, setPages] = useState(() => record.pages.map((item) => ({ ...item, texts: { ...item.texts }, versionTexts: { ...(item.versionTexts || { default: item.texts }) } })));
       const [versions, setVersions] = useState(() => [...record.versions]);
       const [ver, setVer] = useState(() => maxVer(record.versions));
       const [selectedId, setSelectedId] = useState(() => {
@@ -29027,6 +29050,17 @@ DPO : dpo@tcl.com`;
         return first ? first.id : null;
       });
       const [lang, setLang] = useState(record.defaultLanguage || 'en');
+      const appVersionField = Form.useWatch('appVersion', form) || [];
+      const termVals = useMemo(() => {
+        const set = new Set();
+        (appVersionField || []).forEach((entry) => (entry.ranges || []).forEach((r) => { if (r && r.val) set.add(String(r.val)); }));
+        return [...set].sort((a, b) => parseFloat(a) - parseFloat(b));
+      }, [JSON.stringify(appVersionField)]);
+      const termOptions = termVals.length ? termVals.map((v) => ({ value: v, label: v })) : [{ value: 'default', label: '全版本（默认）' }];
+      const [termVer, setTermVer] = useState(termVals.length ? termVals[0] : 'default');
+      useEffect(() => {
+        if (!termVals.includes(termVer)) setTermVer(termVals.length ? termVals[0] : 'default');
+      }, [termVals.join('|')]);
       const [pageOpen, setPageOpen] = useState(false);
       const [editingPage, setEditingPage] = useState(null);
       const [copyOpen, setCopyOpen] = useState(false);
@@ -29048,7 +29082,11 @@ DPO : dpo@tcl.com`;
       const visible = pages;
       const selected = pages.find((item) => item.id === selectedId) || null;
       const showRich = !linkApp || !selected || selected.contentType !== 1;
-      const currentText = selected ? (selected.texts[lang] || '') : '';
+      const currentText = (() => {
+        if (!selected) return '';
+        const vt = (selected.versionTexts || {})[termVer];
+        return vt ? (vt[lang] || '') : (selected.texts[lang] || '');
+      })();
       const siblings = otherVersOf(pages, selected);
       const templateOptions = TEMPLATES
         .filter((item) => selected && item.type === selected.type && item.language === lang)
@@ -29068,9 +29106,13 @@ DPO : dpo@tcl.com`;
 
       const updateText = (value) => {
         if (!selected) return;
-        setPages((prev) => prev.map((item) => (
-          item.id === selected.id ? { ...item, texts: { ...item.texts, [lang]: value } } : item
-        )));
+        setPages((prev) => prev.map((item) => {
+          if (item.id !== selected.id) return item;
+          const vts = item.versionTexts || { default: item.texts || {} };
+          const cur = { ...(vts[termVer] || {}) };
+          cur[lang] = value;
+          return { ...item, versionTexts: { ...vts, [termVer]: cur } };
+        }));
       };
 
       const openAdd = () => {
@@ -29166,13 +29208,13 @@ DPO : dpo@tcl.com`;
       };
 
       const openCompare = () => {
-        const lower = siblings.filter((item) => cmpVer(item, ver) < 0);
-        setCompareVer(lower.length ? lower[lower.length - 1] : siblings[0]);
+        const others = termVals.filter((v) => v !== termVer);
+        setCompareVer(others[0]);
         setCompareOpen(true);
       };
 
-      const comparePage = pages.find((item) => selected && item.name === selected.name && item.ver === compareVer);
-      const compareText = comparePage ? (comparePage.texts[lang] || '') : '';
+      const compareVt = selected ? (selected.versionTexts || {})[compareVer] : null;
+      const compareText = compareVt ? (compareVt[lang] || '') : (selected ? (selected.texts[lang] || '') : '');
       const sameText = currentText.trim() === compareText.trim();
 
       const fillTemplate = () => {
@@ -29205,7 +29247,8 @@ DPO : dpo@tcl.com`;
           message.info('当前语言是英文原文。切换到其它语言后再翻译');
           return;
         }
-        const source = (selected.texts.en || '').trim();
+        const vt = (selected.versionTexts || {})[termVer] || {};
+        const source = (vt.en || selected.texts.en || '').trim();
         if (!source) {
           message.warning('请先填写英文原文');
           return;
@@ -29377,13 +29420,20 @@ DPO : dpo@tcl.com`;
                       <div className="editor-wrap">
                         <div className="editor-meta">
                           <span>设置页面 <b style={{ color: 'rgba(0,0,0,.85)' }}>{selected.name}</b></span>
-                          <span>终端版本 <b style={{ color: 'rgba(0,0,0,.85)' }}>{selected.ver}</b></span>
+                          <span className="bar-label">终端版本</span>
+                          <Select
+                            value={termVer}
+                            style={{ width: 160 }}
+                            options={termOptions}
+                            onChange={setTermVer}
+                            disabled={!termVals.length}
+                          />
                           <span className="bar-hint">
-                            {siblings.length ? `还存在于 ${siblings.join('、')}` : '仅存在于当前版本'}
+                            {termVals.length ? '按 app version 分版本管理文案' : '未配置 app version，默认全版本生效'}
                           </span>
-                          <Tooltip title={siblings.length ? '' : '其它终端版本没有这个设置页面'}>
+                          <Tooltip title={termVals.length >= 2 ? '' : '至少需要配置两个 app version 才能对比'}>
                             <span>
-                              <Button type="link" size="small" disabled={!siblings.length} onClick={openCompare} style={{ padding: 0 }}>
+                              <Button type="link" size="small" disabled={termVals.length < 2} onClick={openCompare} style={{ padding: 0 }}>
                                 与其他版本对比
                               </Button>
                             </span>
@@ -29535,15 +29585,15 @@ DPO : dpo@tcl.com`;
             onCancel={() => setCompareOpen(false)}
           >
             <div style={{ marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>当前版本 {ver}</span>
+              <span>当前版本 {termVer}</span>
               <span>对比</span>
               <Select
                 value={compareVer}
                 style={{ width: 120 }}
-                options={siblings.map((item) => ({ value: item, label: item }))}
+                options={termVals.filter((v) => v !== termVer).map((item) => ({ value: item, label: item }))}
                 onChange={setCompareVer}
               />
-              <span className="bar-hint">语言：{langLabel(lang)}。两侧都是完整正文，浅色底是另一侧没有的行。</span>
+              <span className="bar-hint">语言：{langLabel(lang)}。左右按段落对比，橙色底是另一侧没有的段落。</span>
             </div>
             {sameText ? (
               <div style={{ marginBottom: 12, color: '#52c41a' }}>两个版本的正文一致</div>
@@ -29551,7 +29601,7 @@ DPO : dpo@tcl.com`;
             <Row gutter={12}>
               <Col span={12}>
                 <div className="cmp-col">
-                  <div className="cmp-head">终端版本 {ver}</div>
+                  <div className="cmp-head">终端版本 {termVer}</div>
                   <HighlightText text={currentText} other={compareText} />
                 </div>
               </Col>
@@ -29572,7 +29622,7 @@ DPO : dpo@tcl.com`;
             onCancel={() => setPreviewOpen(false)}
           >
             <div className="bar-hint" style={{ marginBottom: 8 }}>
-              {selected ? `${selected.name} · 终端版本 ${selected.ver} · ${langLabel(lang)}` : ''}
+              {selected ? `${selected.name} · 终端版本 ${termVer} · ${langLabel(lang)}` : ''}
             </div>
             <div className="preview-body" style={{ background: htmlBackground }}>{currentText || ' '}</div>
           </Modal>
@@ -29652,7 +29702,7 @@ DPO : dpo@tcl.com`;
         copied.id = recordSeq++;
         copied.policyName = `${record.policyName}（副本）`.slice(0, 60);
         copied.status = 0;
-        copied.pages = copied.pages.map((item) => ({ ...item, id: nid(), texts: { ...item.texts } }));
+        copied.pages = copied.pages.map((item) => ({ ...item, id: nid(), texts: { ...item.texts }, versionTexts: { ...(item.versionTexts || { default: item.texts }) } }));
         setList((prev) => [copied, ...prev]);
         message.success('操作成功');
       };
