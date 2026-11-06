@@ -80,7 +80,7 @@
     }
     .av-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .av-title { font-weight: 600; color: rgba(0,0,0,.85); }
-    .av-range-row, .av-value-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .av-range-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .av-label { width: 64px; flex-shrink: 0; color: rgba(0,0,0,.65); }
     .av-add { padding-left: 0; }
     .av-empty-hint { color: rgba(0,0,0,.45); font-size: 12px; }
@@ -28961,7 +28961,7 @@ DPO : dpo@tcl.com`;
     function AppVersionField({ value, onChange }) {
       const list = value || [];
       const update = (next) => onChange(next);
-      const addVersion = () => update([...list, { ranges: [{ op: '<', val: '' }], value: '' }]);
+      const addVersion = () => update([...list, { ranges: [{ op: '<', val: '' }] }]);
       const removeVersion = (idx) => update(list.filter((_, i) => i !== idx));
       const patchVersion = (idx, patch) => update(list.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
       const addRange = (vIdx) => {
@@ -29005,14 +29005,6 @@ DPO : dpo@tcl.com`;
                   )}
                 </div>
               ))}
-              <div className="av-value-row">
-                <span className="av-label">value</span>
-                <Input
-                  value={v.value}
-                  placeholder="https://..."
-                  onChange={(e) => patchVersion(vIdx, { value: e.target.value })}
-                />
-              </div>
             </div>
           ))}
           <Button type="link" icon={PlusOutlined ? <PlusOutlined /> : null} onClick={addVersion} className="av-add">添加version</Button>
