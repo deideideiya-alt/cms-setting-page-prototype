@@ -28837,18 +28837,13 @@ DPO : dpo@tcl.com`;
       });
     }
 
+    // 每个协议类型仅保留一条数据（侧边栏按类型去重），保留内容最完整的版本
     function buildGlobalPages() {
       return [
-        makePage({ name: 'User Experience', i18nId: '3197', type: 'User Experience Improvement', ver: '7.5', texts: { en: T0 } }),
-        makePage({ name: 'User Experience', i18nId: '3197', type: 'User Experience Improvement', ver: '7.6', texts: { en: T1 } }),
         makePage({ name: 'User Experience', i18nId: '3197', type: 'User Experience Improvement', ver: '7.7', texts: { en: T2, fr: T2_FR } }),
-        makePage({ name: 'Personalized Advertisement', i18nId: '3201', type: 'Personalized Advertisement', ver: '7.5', texts: { en: 'Personalized Advertisement\n\nWe may deliver personalized advertisements based on device identifiers. You may opt out on this page.' } }),
-        makePage({ name: 'Personalized Advertisement', i18nId: '3201', type: 'Personalized Advertisement', ver: '7.6', texts: { en: 'Personalized Advertisement\n\nWe may deliver personalized advertisements based on device identifiers. You may opt out on this page.\n\nData retention: 12 months.' } }),
         makePage({ name: 'Personalized Advertisement', i18nId: '3201', type: 'Personalized Advertisement', ver: '7.7', texts: { en: 'Personalized Advertisement\n\nWe may deliver personalized advertisements based on device identifiers. You may opt out on this page.\n\nData retention: 12 months.' } }),
-        makePage({ name: 'Limit Ad Tracking', i18nId: '3202', type: 'Limit Ad Tracking', ver: '7.6', texts: { en: 'Limit Ad Tracking\n\nWhen enabled, the advertising identifier is not used for personalized advertisements.' } }),
         makePage({ name: 'Limit Ad Tracking', i18nId: '3202', type: 'Limit Ad Tracking', ver: '7.7', texts: { en: 'Limit Ad Tracking\n\nWhen enabled, the advertising identifier is not used for personalized advertisements.\n\nThis setting is device-scoped.' } }),
         makePage({ name: 'TCL Channel VIP', i18nId: '3203', type: 'VIP Membership Agreement', ver: '7.6', texts: { en: 'TCL Channel VIP Membership Service Agreement\n\nThis agreement governs purchase, renewal and use of VIP membership.' } }),
-        makePage({ name: 'Privacy Policy', i18nId: '3204', type: 'Privacy Policy', ver: '7.5', privacyUrl: 'https://www.tcl.com/privacy', texts: { en: 'Privacy Policy\n\nWe collect and process personal data in accordance with applicable laws.' } }),
         makePage({ name: 'Privacy Policy', i18nId: '3204', type: 'Privacy Policy', ver: '7.7', privacyUrl: 'https://www.tcl.com/privacy', texts: { en: 'Privacy Policy\n\nWe collect and process personal data in accordance with applicable laws.\n\nChildren\'s data: not collected.' } }),
         makePage({ name: 'Terms and Conditions', i18nId: '3205', type: 'Terms and Conditions', ver: '7.7', texts: { en: 'Terms and Conditions of Use\n\nBy using this device and services, you agree to these terms.' } }),
         makePage({ name: 'Auto Policy', i18nId: '3206', type: 'Auto Policy', ver: '7.5', texts: { en: 'Auto Policy\n\nAutomated processing notice.' } }),
