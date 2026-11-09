@@ -29159,6 +29159,11 @@ DPO : dpo@tcl.com`;
             pageForm.setFields([{ name: 'name', errors: ['当前版本下设置页面名称已存在'] }]);
             return;
           }
+          const dupType = pages.some((item) => item.type === values.type && (!editingPage || item.id !== editingPage.id));
+          if (dupType) {
+            pageForm.setFields([{ name: 'type', errors: ['当前配置下该协议类型已存在，每个协议类型只能配置一个'] }]);
+            return;
+          }
           if (editingPage) {
             patchPage(editingPage.id, { ...values, name });
           } else {
